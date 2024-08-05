@@ -8,8 +8,11 @@ the textures are encoded in .ppm files and it should work with any linux distrib
 TODO:
 
 -Actual Randomly Generated Levels
+
 -2D set dressing
+
 -Items (?)
+
 -NPCs (?)
 
 REACH GOALS:
