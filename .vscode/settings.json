@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "*.ppm": "c"
-    }
+        "sdl.h": "c",
+        "vector": "cpp",
+        "random": "cpp",
+        "algorithm": "cpp",
+        "cmath": "cpp"
+    },
+    "makefile.configureOnOpen": true
 }
