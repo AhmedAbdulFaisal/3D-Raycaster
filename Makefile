@@ -1,9 +1,10 @@
-OBJS_C = main.cpp graphics.cpp generator.cpp
-OBJS_H = main.h graphics.h effects.h generator.h
+OBJS_C = main.cpp graphics.cpp generator.cpp effects.cpp
+OBJS_H = main.h graphics.h effects.h generator.h entity.h
 CC = g++
 
 COMPILER_FLAGS = -w
-DEBUGGER_FLAGS = -g
+# -g for debug
+DEBUGGER_FLAGS = 
 
 LINKER_FLAGS = -lSDLmain -lSDL 
 

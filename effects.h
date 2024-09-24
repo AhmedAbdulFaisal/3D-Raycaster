@@ -4,6 +4,8 @@
 using namespace QuickCG;
 using namespace std;
 
+#define length 24
+
 
 /**
  * FOG ENGINE
@@ -104,4 +106,5 @@ inline Uint32 compute_fog(double fogPercentage, Uint32 color, ColorRGB fog_rgb)
     return color;
 }
 
-void drawMap(Uint32 buffer, int xPos, int yPos);
+void renderMap(int map[], int mapScale, int xPos, int yPos, int px, int py, int rx, int ry);
+void renderMap(int map[24][24], int mapScale, int xPos, int yPos, int px, int py, int rx, int ry);

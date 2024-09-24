@@ -2,13 +2,17 @@
 #include <stdlib.h>
 #include <time.h>
 #include <vector>
+#include "entity.h"
 
-#define genWidth  24
+#define genWidth 24
 #define genHeight 24
 
 //https://bronsonzgeb.com/index.php/2022/01/30/procedural-generation-with-cellular-automata/
 
+
 void CellularAutomataGenerate(int arr[genWidth][genHeight], int buf[genWidth][genHeight], float fill, int stepcount);
+
+void DungeonGenerator(int arr[genWidth][genHeight], int buf[genWidth][genHeight]);
 
 int getNeighborCellCount(int arr[genWidth][genHeight], int x, int y);
 
@@ -22,4 +26,5 @@ void copyMap(int arr[genWidth][genHeight], int ceil[genWidth][genHeight], int wa
 
 void fillArray(int arr[genWidth][genHeight], int i);
 
-void fillEdges(int arr[genWidth][genHeight]);
+void generateStaticPositions(int arr[genWidth][genHeight],struct Sprite list_entity[], int type[]);
+

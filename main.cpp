@@ -11,31 +11,43 @@
 using namespace QuickCG;
 using namespace std;
 
-
-
 /**
- * 
+ *
  * RATCASTING DUNGEON CRAWLER
  * (By Ahmed Faisal)
- * 
- * This is a small project of a raycasting nethack-style dungeon crawler where the player must explore each level 
+ *
+ * This is a small project of a raycasting nethack-style dungeon crawler where the player must explore each level
  * before dying. Heavily adapted from https://lodev.org/cgtutor/raycasting.html, and then modified.
- * 
- * TODO: re-write some of graphics.cpp and graphics.h to be more c-friendly (remove namespaces, extraneous functions)
+ *
+ * Sys reqs: 4MB of ram (No seriously)
+ *
+ * Features:
+ *
+ * Minimap (Press Tab)
+ * Randomly Generated environment
+ * Destructible tiles
+ * movement, fog
+ *
+ * Press ESC to exit the game. Use arrow keys to move around, SPACE to destroy blocks.  Hold Tab to bring up minimap
+ *
+ *
+ *
+ * TODO: re-write some of graphics.cpp and graphics.h to be less dependent on the source tutorial
  * TODO: optimize the rendering to be less taxing on the CPU (possibly make it GPU-based)
  * TODO: implement level structure
- * 
+ * TODO:
  * FLAGS: -g for debugger
- * 
+ *
  */
 
-int gen[genWidth][genHeight] = {{ 0 }};
-int buf[genWidth][genHeight] = {{ 0 }};
+int gen[genWidth][genHeight] = {{0}};
+int buf[genWidth][genHeight] = {{0}};
+/* for every explored title, we go zero, for every wall, we mark 1*/
+int map[genWidth * genHeight] = {0};
 
-
-int walls[mapWidth][mapHeight] = {{ 0 }};
-int floorTiles[mapWidth][mapHeight] = {{ 0 }};
-int ceilTiles[mapWidth][mapHeight] = {{ 0 }};
+int walls[mapWidth][mapHeight] = {{0}};
+int floorTiles[mapWidth][mapHeight] = {{0}};
+int ceilTiles[mapWidth][mapHeight] = {{0}};
 /**
 int walls[mapWidth][mapHeight] =
     {
@@ -64,13 +76,8 @@ int ceilTiles[mapWidth][mapHeight] = {
 
 */
 
-Sprite sprite[numSprites] =
-    {
-        // some columns around the map
-        {1.5, 1.5, 1},
-        {2.5, 1.5, 1},
-        {3.5, 1.5, 1},
-};
+std::vector<Sprite> spritelist;
+Sprite sprite[numSprites];
 
 Uint32 buffer[screenHeight][screenWidth];
 double Zbuffer[screenWidth];
@@ -86,38 +93,24 @@ world level = {walls, mapWidth, mapHeight};
  * Things that did kinda work: inline functions, still very slow with 2D billboard sprites.
  **/
 
+double posX = 3, posY = 3;
+
 int main(int argc, char *argv[])
 {
-    //printf("here");
-    CellularAutomataGenerate(gen,buf,0.5f,2);
-    copyMap(gen,ceilTiles,walls,floorTiles);
-    printMap(walls);
-    //printArray(ceilTiles);
-    //printArray(walls);
-    //printArray(floorTiles);
+
+    /* HUD SWITCHES */
+    int drawMap = 0;
+    int mapScale = 4;
+    double mapPos = -512;
+    int debugScreen = 0;
+
+    // variables taken out of the render loop
+    double wallPosX = 0, wallPosY = 0;
+    double wallDist;
 
     /* PLAYER DATA */
-    double posX = 3, posY = 3;
 
-
-    //rudimentary player positioning system
-    for (int x = 0; x < genWidth; x++) {
-        for (int y = 0; y < genHeight; y++) {
-            if (walls[x][y] == 0) {
-                posX = x + .5;
-                posY = y + .5;
-                break;           
-            }
-        }
-    }
-
-    if ((posX >= mapWidth) || (posY >= mapHeight))
-    {
-        printf("Error: Player is out of map bounds! Exiting...");
-        return 0;
-    }
-
-
+    playerInit();
 
     double dirX = -1, dirY = 0;
     double planeX = 0, planeY = 0.66;
@@ -125,8 +118,8 @@ int main(int argc, char *argv[])
     /* TIME KEEPERS */
     double time = 0;
     double oldTime = 0;
-    std::vector<Uint32> texture[9];
-    std::vector<Uint32> sprites[9];
+    std::vector<Uint32> texture[256];
+    std::vector<Uint32> sprites[10];
 
     /* RESIZE TEXTURE VECTOR */
 
@@ -148,10 +141,18 @@ int main(int argc, char *argv[])
     error |= loadImage(texture[6], tw, th, DESIGN001);
     error |= loadImage(texture[7], tw, th, DESIGN002);
     error |= loadImage(texture[8], tw, th, COBBLE);
+    error |= loadImage(texture[9], tw, th, ROCK);
+    error |= loadImage(texture[10], tw, th, GROUND);
+    error |= loadImage(texture[11], tw, th, COBBLE02);
+    error |= loadImage(texture[12], tw, th, ROCKWEAK);
 
     /* IMAGE LOADERS */
     error |= loadImage(sprites[1], tw, th, PILLAR);
     error |= loadImage(sprites[2], tw, th, BARREL);
+    error |= loadImage(sprites[3], tw, th, STAL001);
+    error |= loadImage(sprites[4], tw, th, STAL002);
+    error |= loadImage(sprites[5], tw, th, STAL003);
+    error |= loadImage(sprites[6], tw, th, PILLAR001);
 
     if (error)
     {
@@ -168,81 +169,12 @@ int main(int argc, char *argv[])
     /* Main game loop */
     while (!done())
     {
-        /* FLOOR CASTING */
-        /* 
-        for (int y = 0; y < h; y++)
-        {
 
-            
-
-            float rayDirX0 = dirX - planeX;
-            float rayDirY0 = dirY - planeY;
-            float rayDirX1 = dirX + planeX;
-            float rayDirY1 = dirY + planeY;
-
-            int p = y - screenHeight / 2;
-            float posZ = 0.5 * screenHeight;
-
-            float rowDistance = posZ / p;
-
-            float floorStepX = rowDistance * (rayDirX1 - rayDirX0) / screenWidth;
-            float floorStepY = rowDistance * (rayDirY1 - rayDirY0) / screenWidth;
-
-            float floorX = posX + rowDistance * rayDirX0;
-            float floorY = posY + rowDistance * rayDirY0;
-
-            int cx = (int)(floorX);
-            int cy = (int)(floorY);
-
-            printf("%d,%d ", cx, cy);
-
-            float fogPercentage = rowDistance / FOG_DISTANCE;
-
-            if (fogPercentage > 1.0f)
-                fogPercentage = 1.0f;
-
-            for (int x = 0; x < screenWidth; ++x)
-            {
-                int cellX = (int)(floorX);
-                int cellY = (int)(floorY);
-
-                int tx = (int)(texWidth * (floorX - cellX)) & (texWidth - 1);
-                int ty = (int)(texHeight * (floorY - cellY)) & (texHeight - 1);
-
-                floorX += floorStepX;
-                floorY += floorStepY;
-
-                // int texNum_floor = floorTiles[cellX][cellY] - 1;
-                // int texNum_ceil = ceilTiles[cellX][cellY] - 1;
-
-                int floorTexture = 3;
-                int ceilingTexture = 6;
-                // int floorTexture = texNum_floor;
-                // int ceilingTexture = texNum_ceil;
-
-                Uint32 color;
-                color = texture[floorTexture][texWidth * ty + tx];
-
-                // color = compute_fog_banded(fogPercentage, color);
-                color = compute_fog(fogPercentage, color, fog_rgb);
-                color = (color >> 1) & 8355711;
-                buffer[y][x] = color;
-
-                color = texture[ceilingTexture][texWidth * ty + tx];
-
-                // color = compute_fog_banded(fogPercentage, color);
-                color = compute_fog(fogPercentage, color, fog_rgb);
-                color = (color >> 1) & 8355711;
-                buffer[screenHeight - y - 1][x] = color;
-            }
-            
-        }
-        
-        */
-
-        /* WALL CASTING */
+        /* DRAW CODE */
         for (int x = 0; x < w; x++)
         {
+
+            /* WALL CALCULATIONS */
             double cameraX = 2 * x / double(w) - 1;
             double rayDirX = dirX + planeX * cameraX;
             double rayDirY = dirY + planeY * cameraX;
@@ -299,11 +231,6 @@ int main(int argc, char *argv[])
                     mapY += stepY;
                     side = 1;
                 }
-                /**
-                if (tiles[mapX][mapY].isHollow = 0) {
-                    hit = 1;
-                }
-                */
 
                 if (walls[mapX][mapY] > 0)
                 {
@@ -325,7 +252,7 @@ int main(int argc, char *argv[])
             if (drawEnd >= h)
                 drawEnd = h - 1;
 
-            /* TEXTURE RENDERING CODE */
+            /* TEXTURE RENDERING CODE (WALLS)*/
             int texNum = walls[mapX][mapY] - 1;
             // int texNum = tiles[mapX][mapY].wall;
             // printf("%d",texNum);
@@ -341,6 +268,14 @@ int main(int argc, char *argv[])
                 texX = texWidth - texX - 1;
             if (side == 1 && rayDirY < 0)
                 texX = texWidth - texX - 1;
+
+            if (x == (w / 2))
+            {
+                /* only hit the middle of the screen, save coords*/
+                wallPosX = mapX;
+                wallPosY = mapY;
+                wallDist = perpWallDist;
+            }
 
             double step = 1.0 * texHeight / lineHeight;
             double texPos = (drawStart - h / 2 + lineHeight / 2) * step;
@@ -369,7 +304,7 @@ int main(int argc, char *argv[])
                 buffer[y][x] = color;
             }
 
-            // gay code
+            /* FLOOR TEXTURING CODE */
 
             double floorXWall, floorYWall;
 
@@ -394,15 +329,12 @@ int main(int argc, char *argv[])
                 floorYWall = mapY + 1.0;
             }
 
-            
-
             double distWall, distPlayer, currentDist;
             distWall = perpWallDist;
             distPlayer = 0.0;
 
             if (drawEnd < 0)
                 drawEnd = h;
-            
 
             for (int y = drawEnd + 1; y < h; y++)
             {
@@ -421,7 +353,8 @@ int main(int argc, char *argv[])
 
                 fogPercentage = rowDistance / FOG_DISTANCE;
 
-                if (fogPercentage > 1.0f) fogPercentage = 1.0f; //clip to prevent overflow (texture bugs)
+                if (fogPercentage > 1.0f)
+                    fogPercentage = 1.0f; // clip to prevent overflow (texture bugs)
 
                 int floorTexture = floorTiles[(int)currentFloorX][(int)currentFloorY];
                 int ceilTexture = ceilTiles[(int)currentFloorX][(int)currentFloorY];
@@ -431,14 +364,14 @@ int main(int argc, char *argv[])
                 color = texture[floorTexture][texWidth * floorTexY + floorTexX];
                 color = compute_fog(fogPercentage, color, fog_rgb);
 
-                //buffer[y][x] = (texture[floorTexture][texWidth * floorTexY + floorTexX] >> 1) & 8355711;
+                // buffer[y][x] = (texture[floorTexture][texWidth * floorTexY + floorTexX] >> 1) & 8355711;
                 buffer[y][x] = color;
 
                 color = texture[ceilTexture][texWidth * floorTexY + floorTexX];
                 color = compute_fog(fogPercentage, color, fog_rgb);
 
-                //buffer[h-y][x] = (texture[ceilTexture][texWidth * floorTexY + floorTexX] >> 1) & 8355711;
-                buffer[h-y][x] = color;
+                // buffer[h-y][x] = (texture[ceilTexture][texWidth * floorTexY + floorTexX] >> 1) & 8355711;
+                buffer[h - y][x] = color;
             }
 
             Zbuffer[x] = perpWallDist;
@@ -514,25 +447,95 @@ int main(int argc, char *argv[])
         time = getTicks();
 
         double frameTime = (time - oldTime) / 1000.0;
-        QuickCG::print(1.0 / frameTime);
+
+        /* HUD CODE GOES HERE */
+
+        renderMap(map, 10, 32, 32 + mapPos, (int)posX, (int)posY, wallPosX, wallPosY);
+        // renderMap(walls, 10, 32, 32 + mapPos, (int)posX, (int)posY, wallPosX, wallPosY);
+        //  if (drawMap == 1)
+        //{
+        //      renderMap(map,10, 32, 32+mapPos, (int) posX, (int) posY);
+        //  }
+
+        if (debugScreen == 1)
+        {
+            // every 8 pixels
+            QuickCG::print("Debug Screen", 0, 0);
+            QuickCG::print(1.0 / frameTime, 0, 8);
+            QuickCG::print(dirX, 0, 16);
+            QuickCG::print(dirY, 0, 24);
+            QuickCG::print(posX, 0, 32);
+            QuickCG::print(posY, 0, 40);
+            QuickCG::print(posY, 0, 40);
+            QuickCG::print(wallPosX, 0, 48);
+            QuickCG::print(wallPosY, 0, 56);
+            QuickCG::print(walls[(int)wallPosX][(int)wallPosY], 0, 64);
+            QuickCG::print(wallDist, 0, 72);
+        }
         QuickCG::redraw();
 
         double moveSpeed = frameTime * 3.0;
         double rotSpeed = frameTime * 2.0;
 
+        /* GAME LOGIC GOES HERE */
+
+        exploreMap(map, 3, (int)posX, (int)posY);
+
+        // printf("POSITION: %d,%d\n",wallPosX, wallPosY);
+        // printf("CELL: %d\n",walls[(int)wallPosX][(int)wallPosY]);
+
+        // if (walls[(int)posX][(int)posY] == 0) {
+        //     map[((int)posX) * mapWidth + ((int)posY)] = 1;
+        // }
+
+        /* INPUT CODE GOES HERE */
         QuickCG::readKeys();
+
+        if (keyDown(SDLK_TAB))
+        {
+            drawMap = 1;
+            mapPos += 25;
+            if (mapPos >= 0)
+            {
+                mapPos = 0;
+            }
+        }
+        else
+        {
+            mapPos -= 25;
+            if (mapPos <= -512)
+            {
+                mapPos = -512;
+            }
+            drawMap = 0;
+        }
+
+        if (keyPressed(SDLK_e))
+        {
+            playerInit();
+        }
+
+        if (keyPressed(SDLK_SPACE) && (wallDist < 2))
+        {
+
+            if ((((int)wallPosX >= 1) && ((int)wallPosX <= mapWidth - 1)) && (((int)wallPosY >= 1) && ((int)wallPosY <= mapHeight - 1)))
+            {
+                walls[(int)wallPosX][(int)wallPosY] = 0;
+            }
+        }
+
+        if (keyDown(SDLK_F3))
+        {
+            debugScreen = 1;
+        }
+        else
+        {
+            debugScreen = 0;
+        }
+
         // move forward if no wall in front of you
         if (keyDown(SDLK_UP))
         {
-            /**
-            if (tiles[int(posX + dirX * moveSpeed)][int(posY)].isHollow = 1) {
-                posX += dirX * moveSpeed;
-            }
-            if (tiles[int(posX)][int(posY + dirY * moveSpeed)].isHollow = 1) {
-                posX += dirY * moveSpeed;
-            }
-            */
-
             if (walls[int(posX + dirX * moveSpeed)][int(posY)] == false)
                 posX += dirX * moveSpeed;
             if (walls[int(posX)][int(posY + dirY * moveSpeed)] == false)
@@ -541,15 +544,6 @@ int main(int argc, char *argv[])
         // move backwards if no wall behind you
         if (keyDown(SDLK_DOWN))
         {
-            /**
-            if (tiles[int(posX + dirX * moveSpeed)][int(posY)].isHollow = 1) {
-                posX -= dirX * moveSpeed;
-            }
-            if (tiles[int(posX)][int(posY + dirY * moveSpeed)].isHollow = 1) {
-                posX -= dirY * moveSpeed;
-            }
-            */
-
             if (walls[int(posX - dirX * moveSpeed)][int(posY)] == false)
                 posX -= dirX * moveSpeed;
             if (walls[int(posX)][int(posY - dirY * moveSpeed)] == false)
@@ -576,6 +570,74 @@ int main(int argc, char *argv[])
             double oldPlaneX = planeX;
             planeX = planeX * cos(rotSpeed) - planeY * sin(rotSpeed);
             planeY = oldPlaneX * sin(rotSpeed) + planeY * cos(rotSpeed);
+        }
+    }
+}
+
+/**
+ * reveal tiles on a map. We take a radius, and then for that radius we mark tiles in the array based off of if they're a solid or not.
+ *
+ *  */
+void exploreMap(int map[], int radius, int px, int py)
+{
+    // map[((int)posX) * mapWidth + ((int)posY)] = 1;
+
+    /* Scans through full map */
+    for (int x = 0; x < mapWidth; x++)
+    {
+        for (int y = 0; y < mapHeight; y++)
+        {
+
+            int x_bound_left = px - radius;
+            int x_bound_right = px + radius;
+
+            int y_bound_left = py - radius;
+            int y_bound_right = py + radius;
+
+            /* check if current pixel is within our map bounding box*/
+            if (((x >= x_bound_left) && (x <= x_bound_right)) && ((y >= y_bound_left) && (y <= y_bound_right)))
+            {
+                /* then check if the current pixel is within bounds of the array, otherwise it will segfault */
+                if (((x >= 0) && (x <= mapWidth)) && ((y >= 0) && (y <= mapWidth)))
+                {
+
+                    /* check for which tile is solid and which one is not */
+                    if (walls[x][y] == 0)
+                    {
+                        map[x * mapWidth + y] = 1;
+                    }
+                    else
+                    {
+                        map[x * mapWidth + y] = 0;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void playerInit()
+{
+    // this actually does not zero out the map for some reason
+    //map[genWidth * genHeight] = {0};
+    int variation[] = {3, 4, 5, 6};
+    // printf("here");
+    CellularAutomataGenerate(gen, buf, 0.5f, 1);
+    copyMap(gen, ceilTiles, walls, floorTiles);
+    generateStaticPositions(walls, sprite, variation);
+
+    // rudimentary player positioning system
+    srand(time(NULL));    
+
+
+    for (int x = 0; x < mapWidth; x++) {
+        for (int y = 0; y < mapWidth; y++) {
+            if ((walls[x][y] == 0)) {
+                posX = x + 0.5;
+                posY = y + 0.5;
+                
+                break;
+            }
         }
     }
 }
