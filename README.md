@@ -2,6 +2,10 @@ Here is a full Raycaster made with SDL C++. This isn't necessarily actual 3D, bu
 
 The rendering code was mostly generated from https://lodev.org/cgtutor/raycasting.html, which I would recommend EVERYONE to see.
 
+System Requirements:
+-4MB of Ram (no seriously)
+
+
 Additions:
 * Make the game less dependent on Graphics.h and Graphics.cpp (which was copied over from the lodev tutorial), and make a GPU-based rendering system while keeping the pixel based buffering intact
 * Possibly move over to SDL 2, this uses SDL 1.2
