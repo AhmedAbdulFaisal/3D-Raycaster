@@ -21,15 +21,6 @@ using namespace std;
  *
  * Sys reqs: 4MB of ram (No seriously)
  *
- * Features:
- *
- * Minimap (Press Tab)
- * Randomly Generated environment
- * Destructible tiles
- * movement, fog
- *
- * Press ESC to exit the game. Use arrow keys to move around, SPACE to destroy blocks.  Hold Tab to bring up minimap
- *
  *
  *
  * TODO: re-write some of graphics.cpp and graphics.h to be less dependent on the source tutorial
@@ -40,97 +31,78 @@ using namespace std;
  *
  */
 
+/** 
+ * gen - 2d array for generation
+ * buf - 2d array for holding buffer (for terragen)
+ * map - linear array for holding the minimap data
+ */
 int gen[genWidth][genHeight] = {{0}};
 int buf[genWidth][genHeight] = {{0}};
-/* for every explored title, we go zero, for every wall, we mark 1*/
 int map[genWidth * genHeight] = {0};
 
+
+
+//walls, floorTiles, ceilTiles - 2d array for holding the data for ceil, floor, and wall textures 
 int walls[mapWidth][mapHeight] = {{0}};
 int floorTiles[mapWidth][mapHeight] = {{0}};
 int ceilTiles[mapWidth][mapHeight] = {{0}};
-/**
-int walls[mapWidth][mapHeight] =
-    {
-        {4, 4, 4, 4, 4, 4},
-        {4, 0, 0, 0, 0, 4},
-        {4, 0, 0, 0, 0, 4},
-        {4, 0, 0, 0, 0, 4},
-        {4, 0, 0, 0, 0, 4},
-        {4, 4, 4, 4, 4, 4}};
 
-int floorTiles[mapWidth][mapHeight] = {
-    {3, 3, 3, 3, 3, 3},
-    {3, 8, 8, 8, 8, 3},
-    {3, 8, 7, 7, 8, 3},
-    {3, 8, 7, 7, 8, 3},
-    {3, 8, 8, 8, 8, 3},
-    {3, 3, 3, 3, 3, 3}};
-
-int ceilTiles[mapWidth][mapHeight] = {
-    {3, 3, 3, 3, 3, 3},
-    {3, 8, 8, 8, 8, 3},
-    {3, 8, 8, 8, 8, 3},
-    {3, 8, 8, 8, 8, 3},
-    {3, 8, 8, 8, 8, 3},
-    {3, 3, 3, 3, 3, 3}};
-
-*/
-
+//spritelist - for holding all sprites being rendered
+//sprite - for holding all possible sprites loaded into the game
 std::vector<Sprite> spritelist;
 Sprite sprite[numSprites];
 
+//buffer - screen buffer array
+//Zbuffer - for holding depth of sprites
 Uint32 buffer[screenHeight][screenWidth];
 double Zbuffer[screenWidth];
 
+//spriteorder - for holding order of sprites
+//spriteDistance - array of all possible sprite distances
 int spriteOrder[numSprites];
 double spriteDistance[numSprites];
+
+//unused for now, structure for holding levels
 world level = {walls, mapWidth, mapHeight};
 
-/* TODO:
- * Fog calculations are way too resource intensive, we are loosing 10 fps on this, need faster way to calculate
- * Things that don't work: converting uint32 to ints, Using different method for color calculations
- * Things that may work: using openGL
- * Things that did kinda work: inline functions, still very slow with 2D billboard sprites.
- **/
 
+//universal variables for player position, mostly because they're accessed by an init and main function
 double posX = 3, posY = 3;
 
 int main(int argc, char *argv[])
 {
 
-    /* HUD SWITCHES */
+    /* GUI variables and switches */
     int drawMap = 0;
     int mapScale = 4;
     double mapPos = -512;
     int debugScreen = 0;
 
-    // variables taken out of the render loop
+    /* Store the distance of a wall and the tile position for destroying and creating walls on command */
     double wallPosX = 0, wallPosY = 0;
     double wallDist;
 
-    /* PLAYER DATA */
 
-    playerInit();
+    playerInit(); //call the player init function, to be called for every level restart
 
+    /* variables for direction of player and FOV (0,0.66) */
     double dirX = -1, dirY = 0;
     double planeX = 0, planeY = 0.66;
 
     /* TIME KEEPERS */
     double time = 0;
     double oldTime = 0;
-    std::vector<Uint32> texture[256];
-    std::vector<Uint32> sprites[10];
+    std::vector<Uint32> texture[256]; //texture array
+    std::vector<Uint32> sprites[10]; //sprite array
 
-    /* RESIZE TEXTURE VECTOR */
-
-    for (int i = 0; i < 8; i++)
+    /* RESIZE TEXTURE VECTOR - 2d vector which is resized for the size of each texture */
+    for (int i = 0; i < 256; i++)
         texture[i].resize(texWidth * texHeight);
 
     /* INITIALIZE SCREEN */
     screen(screenWidth, screenHeight, 0, "Raycaster Official");
 
-    /* TEXTURE LOADERS */
-
+    /* TEXTURE LOADERS - here we load each texture and add it to the array*/
     unsigned long tw, th, error = 0;
     error |= loadImage(texture[0], tw, th, BRICKGLARGE);
     error |= loadImage(texture[1], tw, th, BRICKOLARGE);
@@ -146,7 +118,7 @@ int main(int argc, char *argv[])
     error |= loadImage(texture[11], tw, th, COBBLE02);
     error |= loadImage(texture[12], tw, th, ROCKWEAK);
 
-    /* IMAGE LOADERS */
+    /* IMAGE LOADERS - here we load each sprite and add it to it's array */
     error |= loadImage(sprites[1], tw, th, PILLAR);
     error |= loadImage(sprites[2], tw, th, BARREL);
     error |= loadImage(sprites[3], tw, th, STAL001);
@@ -154,17 +126,15 @@ int main(int argc, char *argv[])
     error |= loadImage(sprites[5], tw, th, STAL003);
     error |= loadImage(sprites[6], tw, th, PILLAR001);
 
+    /* Error Checkers  */
     if (error)
     {
         std::cout << "error loading images" << std::endl;
         return 1;
     }
 
-    /* Load fog variables */
-
+    /* Load fog variable */
     ColorRGB fog_rgb = INTtoRGB(FOG_COLOR);
-
-    /* LOAD MAP */
 
     /* Main game loop */
     while (!done())
@@ -196,6 +166,7 @@ int main(int argc, char *argv[])
             int hit = 0;
             int side;
 
+            /* Checking for which side it has hit */
             if (rayDirX < 0)
             {
                 stepX = -1;
@@ -216,7 +187,7 @@ int main(int argc, char *argv[])
                 stepY = 1;
                 sideDistY = (mapY + 1.0 - posY) * deltaDistY;
             }
-
+            /* checking for if it has a hit or side */
             while (hit == 0)
             {
                 if (sideDistX < sideDistY)
@@ -238,7 +209,7 @@ int main(int argc, char *argv[])
                 }
             }
 
-            // fisheye fix
+            /* fixes fisheye */
             if (side == 0)
                 perpWallDist = (sideDistX - deltaDistX);
             else
@@ -252,10 +223,11 @@ int main(int argc, char *argv[])
             if (drawEnd >= h)
                 drawEnd = h - 1;
 
+
             /* TEXTURE RENDERING CODE (WALLS)*/
             int texNum = walls[mapX][mapY] - 1;
-            // int texNum = tiles[mapX][mapY].wall;
-            // printf("%d",texNum);
+      
+
             double wallX;
             if (side == 0)
                 wallX = posY + perpWallDist * rayDirY;
@@ -269,38 +241,43 @@ int main(int argc, char *argv[])
             if (side == 1 && rayDirY < 0)
                 texX = texWidth - texX - 1;
 
+            /* Take the position of the wall and distance whenever the for loop reaches the middle, that way we can detect exactly what hits in the middle */
             if (x == (w / 2))
             {
-                /* only hit the middle of the screen, save coords*/
                 wallPosX = mapX;
                 wallPosY = mapY;
                 wallDist = perpWallDist;
             }
 
+            /*Make preperations for texture coordinates*/
             double step = 1.0 * texHeight / lineHeight;
             double texPos = (drawStart - h / 2 + lineHeight / 2) * step;
 
+            /* Calculate fog distance based off of perpWallDist */
             double fogPercentage = perpWallDist / FOG_DISTANCE;
 
             if (fogPercentage > 1.0f)
                 fogPercentage = 1.0f;
 
+            /* For every pixel within each vertical stripe */
             for (int y = drawStart; y < drawEnd; y++)
             {
                 // Cast the texture coordinate to integer, and mask with (texHeight - 1) in case of overflow
                 int texY = (int)texPos & (texHeight - 1);
                 texPos += step;
                 Uint32 color = texture[texNum][texHeight * texY + texX];
-                // make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
+                
 
-                // Uint32 oldcolor = color;
+                
 
-                // color = compute_fog_banded(fogPercentage, color);
+                /* Calculate fog (use shader as described in effects.cpp, and make a side darker if it's 1 )*/
                 color = compute_fog(fogPercentage, color, fog_rgb);
 
                 if (side == 1)
                     color = (color >> 1) & 8355711;
 
+
+                /* Save color to buffer */
                 buffer[y][x] = color;
             }
 
@@ -308,6 +285,7 @@ int main(int argc, char *argv[])
 
             double floorXWall, floorYWall;
 
+            /* Check which side is which, calculate floorXWall and floorYWall*/
             if (side == 0 && rayDirX > 0)
             {
                 floorXWall = mapX;
@@ -329,6 +307,7 @@ int main(int argc, char *argv[])
                 floorYWall = mapY + 1.0;
             }
 
+            /* Initialize variables */
             double distWall, distPlayer, currentDist;
             distWall = perpWallDist;
             distPlayer = 0.0;
@@ -336,8 +315,10 @@ int main(int argc, char *argv[])
             if (drawEnd < 0)
                 drawEnd = h;
 
+            /* Draw a vertical stripe for each floor texture */
             for (int y = drawEnd + 1; y < h; y++)
             {
+                /* Calculate texture coordinates and their distance on the Z axis */
                 currentDist = h / (2.0 * y - h);
                 double weight = (currentDist - distPlayer) / (distWall - distPlayer);
                 double currentFloorX = weight * floorXWall + (1.0 - weight) * posX;
@@ -351,53 +332,68 @@ int main(int argc, char *argv[])
                 float posZ = 0.5 * screenHeight;
                 float rowDistance = posZ / p;
 
+                /* Here we calculate the fog percentage in the loop for each stripe */
                 fogPercentage = rowDistance / FOG_DISTANCE;
 
                 if (fogPercentage > 1.0f)
                     fogPercentage = 1.0f; // clip to prevent overflow (texture bugs)
 
+                /* Get floor texture and ceiling texture (based off of 2d map )*/
                 int floorTexture = floorTiles[(int)currentFloorX][(int)currentFloorY];
                 int ceilTexture = ceilTiles[(int)currentFloorX][(int)currentFloorY];
 
                 Uint32 color;
 
+                /* compute fog for both ceiling and floor */
                 color = texture[floorTexture][texWidth * floorTexY + floorTexX];
                 color = compute_fog(fogPercentage, color, fog_rgb);
 
-                // buffer[y][x] = (texture[floorTexture][texWidth * floorTexY + floorTexX] >> 1) & 8355711;
                 buffer[y][x] = color;
 
                 color = texture[ceilTexture][texWidth * floorTexY + floorTexX];
                 color = compute_fog(fogPercentage, color, fog_rgb);
 
-                // buffer[h-y][x] = (texture[ceilTexture][texWidth * floorTexY + floorTexX] >> 1) & 8355711;
+                //for each one, save to color (buffer h-y or y for ceiling and floor)
                 buffer[h - y][x] = color;
             }
-
+            //get the perpwalldist and calclate the Zbuffer. 
             Zbuffer[x] = perpWallDist;
         }
 
+
+        /* Calculate sprite distance */
         for (int i = 0; i < numSprites; i++)
         {
             spriteOrder[i] = i;
             spriteDistance[i] = ((posX - sprite[i].x) * (posX - sprite[i].x) + (posY - sprite[i].y) * (posY - sprite[i].y)); // sqrt not taken, unneeded
         }
+        
+        /* Then, sort the srites given the spriteOrder and spriteDistance (with numSprites)*/
         sortSprites(spriteOrder, spriteDistance, numSprites);
 
+        /* take each sprite (based off the order), and then draw them */
         for (int i = 0; i < numSprites; i++)
         {
+            /* define sprite location */
             double spriteX = sprite[spriteOrder[i]].x - posX;
             double spriteY = sprite[spriteOrder[i]].y - posY;
 
+
+            
             double invDet = 1.0 / (planeX * dirY - dirX * planeY);
 
+            /* factor to transform the sprite */
             double transformX = invDet * (dirY * spriteX - dirX * spriteY);
             double transformY = invDet * (-planeY * spriteX + planeX * spriteY);
 
             int spriteScreenX = int((w / 2) * (1 + transformX / transformY));
 
+
+
             int spriteHeight = abs(int(h / (transformY)));
             int drawStartY = -spriteHeight / 2 + h / 2;
+            
+            /* clipping parameters */
             if (drawStartY < 0)
                 drawStartY = 0;
             int drawEndY = spriteHeight / 2 + h / 2;
@@ -412,24 +408,30 @@ int main(int argc, char *argv[])
             if (drawEndX >= w)
                 drawEndX = w - 1;
 
+            /* Calculate sprite fog (see magic number explanation below...)*/
             /* 0.3 is some weird magic number that makes the fog effect equal to how it works on walls
              * no doubt caused by the fact that wall fog is calculated by perpDistance while sprite fog
              * is calculated by the direct distance...*/
             double fogPercentage = (spriteDistance[i] / FOG_DISTANCE) * 0.3;
 
+            /* Again, clip fog distance */
             if (fogPercentage > 1.0f)
                 fogPercentage = 1.0f;
 
+            /* start with drawStartX and drawEndX, not from 0 to w as that would be the entire screen */
             for (int stripe = drawStartX; stripe < drawEndX; stripe++)
             {
+                /* generate x coordinate of texture*/
                 int texX = int(256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
 
+                /* if it's within the transformY bounds, then we draw within the bounds of drawStartY for the y coordinate */
                 if (transformY > 0 && stripe > 0 && stripe < w && transformY < Zbuffer[stripe])
                     for (int y = drawStartY; y < drawEndY; y++)
                     {
                         int d = (y) * 256 - h * 128 + spriteHeight * 128;
                         int texY = ((d * texHeight) / spriteHeight) / 256;
                         Uint32 color = sprites[sprite[spriteOrder[i]].texture][texWidth * texY + texX];
+                        /* compute fog and if the color is not dark (transparent), we apply the color */
                         color = compute_fog(fogPercentage, color, fog_rgb);
 
                         if ((color & 0x00FFFFFF) != 0)
@@ -438,11 +440,14 @@ int main(int argc, char *argv[])
             }
         }
 
+        /* Draw the buffer, then clear it for other elements */
         QuickCG::drawBuffer(buffer[0]);
         for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
                 buffer[y][x] = 0; // clear the buffer instead of cls()
 
+
+        /* calculate FPS */
         oldTime = time;
         time = getTicks();
 
@@ -450,13 +455,10 @@ int main(int argc, char *argv[])
 
         /* HUD CODE GOES HERE */
 
+        /* Render map screen (drawMap is not really used for now )*/
         renderMap(map, 10, 32, 32 + mapPos, (int)posX, (int)posY, wallPosX, wallPosY);
-        // renderMap(walls, 10, 32, 32 + mapPos, (int)posX, (int)posY, wallPosX, wallPosY);
-        //  if (drawMap == 1)
-        //{
-        //      renderMap(map,10, 32, 32+mapPos, (int) posX, (int) posY);
-        //  }
-
+        
+        /* Debug Screen parameters */
         if (debugScreen == 1)
         {
             // every 8 pixels
@@ -472,6 +474,8 @@ int main(int argc, char *argv[])
             QuickCG::print(walls[(int)wallPosX][(int)wallPosY], 0, 64);
             QuickCG::print(wallDist, 0, 72);
         }
+
+        /* Now, we re-draw the screen from scratch */
         QuickCG::redraw();
 
         double moveSpeed = frameTime * 3.0;
@@ -479,14 +483,8 @@ int main(int argc, char *argv[])
 
         /* GAME LOGIC GOES HERE */
 
-        exploreMap(map, 3, (int)posX, (int)posY);
 
-        // printf("POSITION: %d,%d\n",wallPosX, wallPosY);
-        // printf("CELL: %d\n",walls[(int)wallPosX][(int)wallPosY]);
-
-        // if (walls[(int)posX][(int)posY] == 0) {
-        //     map[((int)posX) * mapWidth + ((int)posY)] = 1;
-        // }
+        exploreMap(map, 3, (int)posX, (int)posY); //code for updating minimap 
 
         /* INPUT CODE GOES HERE */
         QuickCG::readKeys();
@@ -580,14 +578,14 @@ int main(int argc, char *argv[])
  *  */
 void exploreMap(int map[], int radius, int px, int py)
 {
-    // map[((int)posX) * mapWidth + ((int)posY)] = 1;
+    
 
     /* Scans through full map */
     for (int x = 0; x < mapWidth; x++)
     {
         for (int y = 0; y < mapHeight; y++)
         {
-
+            //bounding parameters for the minimap explore radius 
             int x_bound_left = px - radius;
             int x_bound_right = px + radius;
 
@@ -601,7 +599,7 @@ void exploreMap(int map[], int radius, int px, int py)
                 if (((x >= 0) && (x <= mapWidth)) && ((y >= 0) && (y <= mapWidth)))
                 {
 
-                    /* check for which tile is solid and which one is not */
+                    /* check for which tile is solid and which one is not. We update based off of which tile is which */
                     if (walls[x][y] == 0)
                     {
                         map[x * mapWidth + y] = 1;
@@ -618,18 +616,18 @@ void exploreMap(int map[], int radius, int px, int py)
 
 void playerInit()
 {
-    // this actually does not zero out the map for some reason
-    //map[genWidth * genHeight] = {0};
+    /* variations for sprites */
     int variation[] = {3, 4, 5, 6};
-    // printf("here");
+    
+    /* Generates a new map with cellular automata */
     CellularAutomataGenerate(gen, buf, 0.5f, 1);
+    /* Actually copies data over to the mapData arrays*/
     copyMap(gen, ceilTiles, walls, floorTiles);
+
+    /* Generates locations of static props */
     generateStaticPositions(walls, sprite, variation);
 
-    // rudimentary player positioning system
-    srand(time(NULL));    
-
-
+    // rudimentary player positioning system which finds the first available position
     for (int x = 0; x < mapWidth; x++) {
         for (int y = 0; y < mapWidth; y++) {
             if ((walls[x][y] == 0)) {
@@ -640,10 +638,14 @@ void playerInit()
             }
         }
     }
+
+
 }
 
+/* Simple sorting mechanism for the sprite ordering code */
 void sortSprites(int *order, double *dist, int amount)
 {
+    
     std::vector<std::pair<double, int>> sprites(amount);
     for (int i = 0; i < amount; i++)
     {
