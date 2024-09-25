@@ -3,7 +3,8 @@ Here is a full Raycaster made with SDL C++. This isn't necessarily actual 3D, bu
 The rendering code was mostly generated from https://lodev.org/cgtutor/raycasting.html, which I would recommend EVERYONE to see.
 
 System Requirements:
--4MB of Ram (no seriously)
+
+* 4MB of Ram (no seriously)
 
 
 Additions:
