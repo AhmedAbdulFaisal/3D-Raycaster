@@ -3,10 +3,10 @@
 
 void initTextures(std::vector<Uint32> texture[256], std::vector<Uint32> sprites[10]) {
     for (int i = 0; i < 13; i++)
-        texture[i].resize(TEXWIDTH * TEXHEIGHT);
+        texture[i].resize(texWidth * texHeight);
 
     for (int i = 0; i < 7; i++)
-        sprites[i].resize(TEXWIDTH * TEXHEIGHT);
+        sprites[i].resize(texWidth * texHeight);
 }
 void loadTextures(std::vector<Uint32> texture[256], std::vector<Uint32> sprites[10])
 {

@@ -1,19 +1,15 @@
 #ifndef _ENTITY_
 #define _ENTITY_
 
-struct World {
-    int size=6;
-    int ceiling[6*6];
-    int walls[6*6];
-    int floor[6*6];
-};
+#include <stdio.h>
+#include <iostream>
+#include <vector>
+#include "main.h"
 
 struct Player {
-  double xPos = 0, yPos = 0;
+  double posX = 3, posY = 3;
   double dirX = -1, dirY = 0;
   double planeX = 0, planeY = 0.66;
-  double moveSpeed = 0;
-  double rotSpeed = 0;
 };
 
 struct Sprite
@@ -23,16 +19,12 @@ struct Sprite
   int texture;
 };
 
-/** take data from drawScene within renderer.cpp and use it for 
- * game logic
- *  */
-struct data {
-  double wallPosX;
-  double wallPosY;
-  double WallDist;
+struct World {
+  int size=mapWidth;
+  int ceiling[mapWidth*mapWidth] = {'0'};
+  int walls[mapWidth*mapWidth] = {'0'};
+  int floor[mapWidth*mapWidth] = {'0'};
 };
 
+#endif //_ENTITY_
 
-
-
-#endif // _ENTITY_

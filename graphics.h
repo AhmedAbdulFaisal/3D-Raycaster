@@ -126,6 +126,7 @@ bool operator!=(const ColorRGB& color, const ColorRGB& color2);
 
 static const ColorRGB RGB_Black    (  0,   0,   0);
 static const ColorRGB RGB_Red      (255,   0,   0);
+static const ColorRGB RGB_LightRed (247, 102,  92);
 static const ColorRGB RGB_Green    (  0, 255,   0);
 static const ColorRGB RGB_Blue     (  0,   0, 255);
 static const ColorRGB RGB_Cyan     (  0, 255, 255);

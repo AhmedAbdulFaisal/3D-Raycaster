@@ -6,8 +6,6 @@
 #include "main.h"
 #include "graphics.h"
 
-using namespace QuickCG;
-
 
 /* TEXTURE DEFINES */
 #define BRICKGLARGE     "art/textures/brick-large.png"
@@ -30,12 +28,15 @@ using namespace QuickCG;
 
 #define BARREL          "art/sprites/barrel.png"
 #define PILLAR          "art/sprites/pillar.png"
-#define PILLAR001       "art/sprites/pillar001.png"
+#define PILLAR001          "art/sprites/pillar001.png"
 #define STAL001         "art/sprites/stal001.png"
 #define STAL002         "art/sprites/stal002.png"
 #define STAL003         "art/sprites/stal003.png"
 
+using namespace QuickCG;
+
 void initTextures(std::vector<Uint32> texture[256], std::vector<Uint32> sprites[10]);
 void loadTextures(std::vector<Uint32> texture[256], std::vector<Uint32> sprites[10]);
+
 
 #endif // _LOAD_

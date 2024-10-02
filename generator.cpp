@@ -1,27 +1,28 @@
 #include "generator.h"
 #include <cstring>
 #include <vector>
+#include "main.h"
 
 /**
  * Contains various terrain generator algorithims
  * Caves - Cellular Automata
  * Dungeons - To be decided
- *
+ * width * row + column
  */
 
-void fillArray(int arr[genWidth][genHeight], int i)
+void fillArray(int arr[], int i)
 {
     for (int x = 0; x < genWidth; x++)
     {
         for (int y = 0; y < genHeight; y++)
         {
-            arr[x][y] = 1;
+            arr[mapHeight * x + y] = 1;
         }
     }
     //printArray(arr);
 }
 
-void CellularAutomataGenerate(int arr[genWidth][genHeight], int buf[genWidth][genHeight], float fill, int stepcount)
+void CellularAutomataGenerate(int arr[], int buf[], float fill, int stepcount)
 {
     /* resetting automata */
     srand(time(NULL));
@@ -34,7 +35,7 @@ void CellularAutomataGenerate(int arr[genWidth][genHeight], int buf[genWidth][ge
         {
             // int i = rand() % 2;
             float r = (float)rand() / (float)RAND_MAX;
-            arr[x][y] = r < fill ? 1 : 0;
+            arr[mapHeight * x + y] = r < fill ? 1 : 0;
         }
     }
 
@@ -50,49 +51,49 @@ void CellularAutomataGenerate(int arr[genWidth][genHeight], int buf[genWidth][ge
 
 }
 
-int getNeighborCellCount(int arr[genWidth][genHeight], int x, int y)
+int getNeighborCellCount(int arr[], int x, int y)
 {
     int count = 0;
     if (x > 0)
     {
-        count += arr[x - 1][y];
+        count += arr[mapHeight * (x-1) + y];
         if (y > 0)
         {
-            count += arr[x - 1][y - 1];
+            count += arr[mapHeight * (x-1) + (y-1)];
         }
     }
 
     if (y > 0)
     {
-        count += arr[x][y - 1];
+        count += arr[mapHeight * x + (y-1)];
         if (y < genWidth - 1)
         {
-            count += arr[x + 1][y - 1];
+            count += arr[mapHeight * (x+1) + (y-1)];
         }
     }
 
     if (x < genWidth - 1)
     {
-        count += arr[x + 1][y];
+        count += arr[mapHeight * (x+1) + y];
         if (y < genHeight - 1)
         {
-            count += arr[x + 1][y + 1];
+            count += arr[mapHeight * (x+1) + (y+1)];
         }
     }
 
     if (y < genHeight - 1)
     {
-        count += arr[x][y + 1];
+        count += arr[mapHeight * (x) + (y+1)];
         if (x > 0)
         {
-            count += arr[x - 1][y + 1];
+            count += arr[mapHeight * (x-1) + (y+1)];
         }
     }
 
     return count;
 }
 
-void step(int arr[genWidth][genHeight], int buf[genWidth][genHeight], int req)
+void step(int arr[], int buf[], int req)
 {
 
     // printArray(buf);
@@ -102,9 +103,9 @@ void step(int arr[genWidth][genHeight], int buf[genWidth][genHeight], int req)
         for (int y = 0; y < genHeight; y++)
         {
             // printf("%d ",buf[y][x]); //leads to segfault, accessing buf[x][y] in general
-            int i = arr[x][y];
+            int i = arr[mapHeight * (x) + (y)];
             // printf("%d ",i);
-            buf[x][y] = i; // SEGFAULT HERE!!!!!!!
+            buf[mapHeight * (x) + (y)] = i; // SEGFAULT HERE!!!!!!!
         }
     }
 
@@ -117,14 +118,14 @@ void step(int arr[genWidth][genHeight], int buf[genWidth][genHeight], int req)
     {
         for (int y = 1; y < genHeight - 1; y++)
         {
-            int livecount = arr[x][y] + getNeighborCellCount(arr, x, y);
+            int livecount = arr[mapHeight * (x) + (y)] + getNeighborCellCount(arr, x, y);
             // printf("%d,%d ",livecount,livereq);
             // if (livecount > livereq) {
             //     buf[x][y] = 1;
             // }else {
             //     buf[x][y] = 0;
             // }
-            buf[x][y] = livecount > livereq ? 1 : 0;
+            buf[mapHeight * (x) + (y)] = livecount > livereq ? 1 : 0;
         }
         // printf("\n");
     }
@@ -133,32 +134,32 @@ void step(int arr[genWidth][genHeight], int buf[genWidth][genHeight], int req)
     {
         for (int y = 0; y < genHeight; y++)
         {
-            arr[x][y] = buf[x][y];
+            arr[mapHeight * (x) + (y)] = buf[mapHeight * (x) + (y)];
         }
     }
 }
 
-void printArray(int arr[genWidth][genHeight])
+void printArray(int arr[])
 {
     printf("RESULT:\n");
     for (int x = 0; x < genWidth; x++)
     {
         for (int y = 0; y < genHeight; y++)
         {
-            printf("%d ", arr[x][y]);
+            printf("%d ", arr[mapHeight * (x) + (y)]);
         }
         printf("\n");
     }
 }
 
-void printMap(int arr[genWidth][genHeight])
+void printMap(int arr[])
 {
     printf("LEVEL MAP:\n");
     for (int x = 0; x < genWidth; x++)
     {
         for (int y = 0; y < genHeight; y++)
         {
-            if (arr[x][y] != 0)
+            if (arr[mapHeight * (x) + (y)] != 0)
             {
                 printf(" ");
             }
@@ -171,7 +172,7 @@ void printMap(int arr[genWidth][genHeight])
     }
 }
 
-void generateStaticPositions(int arr[genWidth][genHeight], struct Sprite list[], int type[])
+void generateStaticPositions(int arr[], struct Sprite list[], int type[])
 {
     float p = 0.2f;
     int c = 0;
@@ -181,7 +182,7 @@ void generateStaticPositions(int arr[genWidth][genHeight], struct Sprite list[],
         for (int yPos = 0; yPos < genHeight; yPos++)
         {
             float r = (float)rand() / (float)RAND_MAX;
-            if ((arr[xPos][yPos] == 0))
+            if ((arr[mapHeight * (xPos) + (yPos)] == 0))
             {
                 if ((c <= 32) && (r < p))
                 {
@@ -198,8 +199,10 @@ void generateStaticPositions(int arr[genWidth][genHeight], struct Sprite list[],
 }
 
 /* dimensions MUST be the same as the main map dimensions or else this will segfault!!!!! */
-void copyMap(int arr[genWidth][genHeight], int ceil[genWidth][genHeight], int walls[genWidth][genHeight], int floor[genWidth][genHeight])
+void copyMap(int arr[],struct World& wld)
 {
+;
+    
     //printArray(walls);
     for (int x = 0; x < genWidth; x++)
     {
@@ -210,18 +213,18 @@ void copyMap(int arr[genWidth][genHeight], int ceil[genWidth][genHeight], int wa
             int rubbletile = 10;
             int floortile = 10;
 
-            if (arr[x][y] == 1)
+            if (arr[mapHeight * (x) + (y)] == 1)
             {
 
-                ceil[x][y] = ceiltile;
-                walls[x][y] = walltile;
-                floor[x][y] = floortile;
+                wld.ceiling[mapHeight * (x) + (y)] = ceiltile;
+                wld.walls[mapHeight * (x) + (y)] = walltile;
+                wld.floor[mapHeight * (x) + (y)] = floortile;
             }
-            else if (arr[x][y] == 0)
+            else if (arr[mapHeight * (x) + (y)] == 0)
             {
-                ceil[x][y] = ceiltile;
-                walls[x][y] = 0;
-                floor[x][y] = floortile;
+                wld.ceiling[mapHeight * (x) + (y)] = ceiltile;
+                wld.walls[mapHeight * (x) + (y)] = 0;
+                wld.floor[mapHeight * (x) + (y)] = floortile;
             }
         }
     }
@@ -236,12 +239,12 @@ void copyMap(int arr[genWidth][genHeight], int ceil[genWidth][genHeight], int wa
             int rubbletile = 13;
             
 
-            if (arr[x][y] == 1)
+            if (arr[mapHeight * (x) + (y)] == 1)
             {
-                if (((arr[x - 1][y] == 0) && (arr[x + 1][y]) == 0) || ((arr[x][y-1] == 0) && (arr[x][y+1]) == 0))
+                if (((arr[mapHeight * (x-1) + (y)] == 0) && (arr[mapHeight * (x+1) + (y)]) == 0) || ((arr[mapHeight * (x) + (y-1)] == 0) && (arr[mapHeight * (x) + (y+1)]) == 0))
                 {
                     //arr[x][y] = 5;
-                    walls[x][y] = rubbletile;
+                    wld.walls[mapHeight * (x) + (y)] = rubbletile;
                 }
                 //((arr[x][y - 1] && arr[x][y + 1])) == 0)
             }

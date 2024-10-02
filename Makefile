@@ -1,5 +1,5 @@
-OBJS_C = main.cpp graphics.cpp renderer.cpp utility.cpp load.cpp
-OBJS_H = main.h graphics.h entity.h renderer.h utility.h load.h
+OBJS_C = main.cpp graphics.cpp generator.cpp effects.cpp load.cpp minimap.cpp
+OBJS_H = main.h graphics.h effects.h generator.h entity.h load.h minimap.h
 CC = g++
 
 COMPILER_FLAGS = -w

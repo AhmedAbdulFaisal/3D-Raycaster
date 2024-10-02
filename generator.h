@@ -10,21 +10,21 @@
 //https://bronsonzgeb.com/index.php/2022/01/30/procedural-generation-with-cellular-automata/
 
 
-void CellularAutomataGenerate(int arr[genWidth][genHeight], int buf[genWidth][genHeight], float fill, int stepcount);
+void CellularAutomataGenerate(int arr[], int buf[], float fill, int stepcount);
 
-void DungeonGenerator(int arr[genWidth][genHeight], int buf[genWidth][genHeight]);
+void DungeonGenerator(int arr[], int buf[]);
 
-int getNeighborCellCount(int arr[genWidth][genHeight], int x, int y);
+int getNeighborCellCount(int arr[], int x, int y);
 
-void step(int arr[genWidth][genHeight],int buf[genWidth][genHeight],int req);
+void step(int arr[],int buf[],int req);
 
-void printArray(int arr[genWidth][genHeight]);
+void printArray(int arr[]);
 
-void printMap(int arr[genWidth][genHeight]);
+void printMap(int arr[]);
 
-void copyMap(int arr[genWidth][genHeight], int ceil[genWidth][genHeight], int walls[genWidth][genHeight], int floor[genWidth][genHeight]);
+void copyMap(int arr[],struct World& wld);
 
-void fillArray(int arr[genWidth][genHeight], int i);
+void fillArray(int arr[], int i);
 
-void generateStaticPositions(int arr[genWidth][genHeight],struct Sprite list_entity[], int type[]);
+void generateStaticPositions(int arr[],struct Sprite list_entity[], int type[]);
 
